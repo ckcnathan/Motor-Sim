@@ -18,7 +18,7 @@ addpath("controller\");
 
 % time %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 t_end = 5;  %end time [s]
-sample_fq = 40000;  %sampling frequency [Hz]
+sample_fq = 50000;  %sampling frequency [Hz]
 dt = 1/sample_fq;   %sampling period [s]
 output.time = 0:dt:t_end;    %time vector
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -86,14 +86,20 @@ for k=1:length(output.time)
         return
     end
 
-    % forward euler's method %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    di_abc = L_solv\(V_solv-R_solv*i_solv-dL_solv*i_solv-dpm_solv);
-    i_abc = di_abc(1:3).*dt+i_abc;
+    % % forward euler's method %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % di_abc = L_solv\(V_solv-R_solv*i_solv-dL_solv*i_solv-dpm_solv);
+    % i_abc = di_abc(1:3).*dt+i_abc;
+    % i_dq0 = dq0_tf*i_abc;
+    % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % ode45 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    tspan = [0 dt];
+    [t,i_out] = ode45(@(t,i_solv) solvplant45(L_solv,V_solv,R_solv,dL_solv,i_solv,dpm_solv),tspan,i_solv);
+    i_abc = i_out(end,1:3)';
     i_dq0 = dq0_tf*i_abc;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     if strcmp(termination,'wye')
-        V_abc = V_uvw-di_abc(4); % V_uvw-V_n
+        V_abc = V_uvw-i_out(end,4); % V_uvw-V_n
     end
 
     % POWER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -144,3 +150,12 @@ plot(output.time,output.I.dq0)
 hold on
 plot(output.time,output.I.ref)
 grid on
+
+
+
+
+%%
+function [di_abc] = solvplant45(L_solv,V_solv,R_solv,dL_solv,i_solv,dpm_solv)
+    di_abc = L_solv\(V_solv-R_solv*i_solv-dL_solv*i_solv-dpm_solv);
+
+end
