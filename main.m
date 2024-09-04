@@ -18,7 +18,7 @@ addpath("controller\");
 
 % time %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 t_end = 5;  %end time [s]
-sample_fq = 50000;  %sampling frequency [Hz]
+sample_fq = 20000;  %sampling frequency [Hz]
 dt = 1/sample_fq;   %sampling period [s]
 output.time = 0:dt:t_end;    %time vector
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -50,11 +50,12 @@ for k=1:length(output.time)
     % Controller %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % V_uvw = dq0_volt_controller(V_bus,dq0_tf,0,1);
 
-    if output.time(k)>1
-       i_ref = [0;5;0];
-    else
-       i_ref = [0;0;0];
-    end
+    % if output.time(k)>1
+    %    i_ref = [0;5;0];
+    % else
+    %    i_ref = [0;0;0];
+    % end
+    i_ref = [0;5*sin(output.time(k));0];
     [V_uvw,i_int,i_error] = PI_current_controller(i_ref,i_dq0,abc_tf,i_int,60,V_bus);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -87,20 +88,22 @@ for k=1:length(output.time)
     end
 
     % % forward euler's method %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % di_abc = L_solv\(V_solv-R_solv*i_solv-dL_solv*i_solv-dpm_solv);
-    % i_abc = di_abc(1:3).*dt+i_abc;
-    % i_dq0 = dq0_tf*i_abc;
+    di_abc = L_solv\(V_solv-R_solv*i_solv-dL_solv*i_solv-dpm_solv);
+    i_abc = di_abc(1:3).*dt+i_abc;
+    i_dq0 = dq0_tf*i_abc;
+    if strcmp(termination,'wye')
+        V_abc = V_uvw-di_abc(4); % V_uvw-V_n
+    end
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % ode45 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    tspan = [0 dt];
-    [t,i_out] = ode45(@(t,i_solv) solvplant45(L_solv,V_solv,R_solv,dL_solv,i_solv,dpm_solv),tspan,i_solv);
-    i_abc = i_out(end,1:3)';
-    i_dq0 = dq0_tf*i_abc;
+    % tspan = [0 dt];
+    % [t,i_out] = ode45(@(t,i_solv) solvplant45(L_solv,V_solv,R_solv,dL_solv,i_solv,dpm_solv),tspan,i_solv);
+    % i_abc = i_out(end,1:3)';
+    % i_dq0 = dq0_tf*i_abc;
+    % if strcmp(termination,'wye')
+    %     V_abc = V_uvw-i_out(end,4); % V_uvw-V_n
+    % end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    if strcmp(termination,'wye')
-        V_abc = V_uvw-i_out(end,4); % V_uvw-V_n
-    end
 
     % POWER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     p_elec = V_abc'*i_abc;   % electrical power
